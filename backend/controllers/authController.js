@@ -1,0 +1,342 @@
+const User = require("../models/User");
+const Doctor = require("../models/Doctor");
+const TempRegistration = require("../models/TempRegistration");
+const jwt = require("jsonwebtoken");
+const { OAuth2Client } = require("google-auth-library");
+const {
+  sendOTPEmail,
+  sendWelcomeEmail,
+  sendForgotPasswordEmail,
+} = require("../utils/sendEmail");
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+// Helper: send tokens
+const sendTokens = (user, statusCode, res) => {
+  const accessToken = user.getAccessToken();
+  const refreshToken = user.getRefreshToken();
+
+  user.refreshToken = refreshToken;
+  user.save({ validateBeforeSave: false });
+
+  res.status(statusCode).json({
+    success: true,
+    accessToken,
+    refreshToken,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      profilePhoto: user.profilePhoto,
+      isVerified: user.isVerified,
+      ...(user.role === "doctor" && {
+        verificationStatus: user.verificationStatus,
+        specialization: user.specialization,
+        house: user.house,
+      }),
+    },
+  });
+};
+
+// @desc    Register patient - Store in temp collection, send OTP
+// @route   POST /api/auth/register
+// @access  Public
+exports.register = async (req, res, next) => {
+  try {
+    const { name, email, password, phone, role, specialization, experience, fees, address, house } = req.body;
+
+    // Check if email already exists in temp registrations
+    let tempReg = await TempRegistration.findOne({ email });
+    
+    if (tempReg) {
+      // Delete old temp registration if exists
+      await TempRegistration.deleteOne({ email });
+    }
+
+    // Check if email already registered permanently
+    const Model = role === "doctor" ? Doctor : User;
+    const existing = await Model.findOne({ email });
+    if (existing) {
+      return res.status(400).json({ success: false, message: "Email already registered" });
+    }
+
+    // Create temporary registration
+    const tempData = {
+      name,
+      email,
+      password,
+      phone,
+      role: role || "patient",
+    };
+
+    if (role === "doctor") {
+      tempData.specialization = specialization;
+      tempData.experience = experience;
+      tempData.fees = fees;
+      tempData.address = address;
+      tempData.house = house;
+    }
+
+    const tempRegistration = await TempRegistration.create(tempData);
+    const otp = tempRegistration.generateOTP();
+    await tempRegistration.save();
+    
+    await sendOTPEmail(email, name, otp);
+
+    res.status(201).json({
+      success: true,
+      message: "OTP sent to your email. Please verify to complete registration.",
+      userId: tempRegistration._id,
+      role,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Verify OTP and create user
+// @route   POST /api/auth/verify-otp
+// @access  Public
+exports.verifyOTP = async (req, res, next) => {
+  try {
+    const { userId, otp, role } = req.body;
+
+    // Find temporary registration
+    const tempReg = await TempRegistration.findById(userId);
+    if (!tempReg) {
+      return res.status(404).json({ success: false, message: "Registration session expired. Please register again." });
+    }
+
+    // Verify OTP
+    if (!tempReg.otp || tempReg.otp.code !== otp) {
+      return res.status(400).json({ success: false, message: "Invalid OTP" });
+    }
+
+    if (new Date() > tempReg.otp.expiresAt) {
+      await TempRegistration.deleteOne({ _id: userId });
+      return res.status(400).json({ success: false, message: "OTP has expired. Please register again." });
+    }
+
+    // Create actual user/doctor account
+    const Model = role === "doctor" ? Doctor : User;
+    const user = await Model.create({
+      name: tempReg.name,
+      email: tempReg.email,
+      password: tempReg.password,
+      phone: tempReg.phone,
+      role: role || "patient",
+      isVerified: true,
+      ...(role === "doctor" && {
+        specialization: tempReg.specialization,
+        experience: tempReg.experience,
+        fees: tempReg.fees,
+        address: tempReg.address,
+        house: tempReg.house,
+      }),
+    });
+
+    await sendWelcomeEmail(user.email, user.name);
+    
+    // Delete temporary registration
+    await TempRegistration.deleteOne({ _id: userId });
+
+    sendTokens(user, 201, res);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Resend OTP
+// @route   POST /api/auth/resend-otp
+// @access  Public
+exports.resendOTP = async (req, res, next) => {
+  try {
+    const { userId, role } = req.body;
+    
+    const tempReg = await TempRegistration.findById(userId);
+    if (!tempReg) {
+      return res.status(404).json({ success: false, message: "Registration session expired. Please register again." });
+    }
+
+    const otp = tempReg.generateOTP();
+    await tempReg.save();
+    await sendOTPEmail(tempReg.email, tempReg.name, otp);
+
+    res.status(200).json({ success: true, message: "OTP resent successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Login
+// @route   POST /api/auth/login
+// @access  Public
+exports.login = async (req, res, next) => {
+  try {
+    const { email, password, role } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: "Please provide email and password" });
+    }
+
+    const Model = role === "doctor" ? Doctor : User;
+    const user = await Model.findOne({ email }).select("+password");
+
+    if (!user || !(await user.matchPassword(password))) {
+      return res.status(401).json({ success: false, message: "Invalid credentials" });
+    }
+
+    if (!user.isVerified) {
+      return res.status(401).json({
+        success: false,
+        message: "Email not verified. Please verify your email first.",
+        userId: user._id,
+      });
+    }
+
+    sendTokens(user, 200, res);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Google OAuth Login
+// @route   POST /api/auth/google
+// @access  Public
+exports.googleAuth = async (req, res, next) => {
+  try {
+    const { token, role } = req.body;
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const { name, email, picture, sub: googleId } = ticket.getPayload();
+    const Model = role === "doctor" ? Doctor : User;
+
+    let user = await Model.findOne({ email });
+
+    if (!user) {
+      user = await Model.create({
+        name,
+        email,
+        googleId,
+        profilePhoto: picture,
+        authProvider: "google",
+        isVerified: true,
+        role: role || "patient",
+      });
+      await sendWelcomeEmail(email, name);
+    }
+
+    sendTokens(user, 200, res);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Refresh access token
+// @route   POST /api/auth/refresh
+// @access  Public
+exports.refreshToken = async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(401).json({ success: false, message: "No refresh token" });
+    }
+
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+
+    let user = await User.findById(decoded.id).select("+refreshToken");
+    if (!user) user = await Doctor.findById(decoded.id).select("+refreshToken");
+
+    if (!user || user.refreshToken !== refreshToken) {
+      return res.status(401).json({ success: false, message: "Invalid refresh token" });
+    }
+
+    const accessToken = user.getAccessToken();
+    res.status(200).json({ success: true, accessToken });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Forgot password - send OTP
+// @route   POST /api/auth/forgot-password
+// @access  Public
+exports.forgotPassword = async (req, res, next) => {
+  try {
+    const { email, role } = req.body;
+    const Model = role === "doctor" ? Doctor : User;
+    const user = await Model.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "No account found with this email" });
+    }
+
+    const otp = user.generateOTP();
+    await user.save();
+    await sendForgotPasswordEmail(email, user.name, otp);
+
+    res.status(200).json({
+      success: true,
+      message: "Password reset OTP sent to your email",
+      userId: user._id,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Reset password
+// @route   POST /api/auth/reset-password
+// @access  Public
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { userId, otp, newPassword, role } = req.body;
+    const Model = role === "doctor" ? Doctor : User;
+    const user = await Model.findById(userId);
+
+    if (!user || !user.otp || user.otp.code !== otp) {
+      return res.status(400).json({ success: false, message: "Invalid OTP" });
+    }
+
+    if (new Date() > user.otp.expiresAt) {
+      return res.status(400).json({ success: false, message: "OTP has expired" });
+    }
+
+    user.password = newPassword;
+    user.otp = undefined;
+    await user.save();
+
+    res.status(200).json({ success: true, message: "Password reset successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get current user
+// @route   GET /api/auth/me
+// @access  Private
+exports.getMe = async (req, res, next) => {
+  try {
+    res.status(200).json({ success: true, data: req.user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Logout
+// @route   POST /api/auth/logout
+// @access  Private
+exports.logout = async (req, res, next) => {
+  try {
+    req.user.refreshToken = undefined;
+    await req.user.save({ validateBeforeSave: false });
+    res.status(200).json({ success: true, message: "Logged out successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
