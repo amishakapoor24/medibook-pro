@@ -53,7 +53,7 @@ Copy-Item backend/.env.example backend/.env
 Copy-Item frontend/.env.example frontend/.env
 ```
 
-Set the backend values for `MONGO_URI`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `CLIENT_URL`, `EMAIL_*`, and `CLOUDINARY_*`. Set `OPENAI_API_KEY` to your Groq key. The compatible provider settings are `OPENAI_BASE_URL`, `OPENAI_MODEL`, and optional `AI_TIMEOUT_MS`.
+Set the backend values for `MONGO_URI`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `CLIENT_URL`, `EMAIL_*`, and `CLOUDINARY_*`. Set `OPENAI_API_KEY` to your Groq API key (starts with `gsk_`). The default model is `llama-3.1-8b-instant` (Groq free tier, 14 400 req/day). To override, set `OPENAI_MODEL` to any model available on your Groq plan (e.g. `llama-3.3-70b-versatile`). Optional: `OPENAI_BASE_URL` to change the provider endpoint, `AI_TIMEOUT_MS` to change the request timeout.
 
 Set frontend `REACT_APP_API_URL` to the backend URL ending in `/api`, `REACT_APP_SOCKET_URL` to the backend origin, and `REACT_APP_GOOGLE_CLIENT_ID` if Google login is enabled.
 

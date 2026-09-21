@@ -82,7 +82,7 @@ const PatientDashboard = () => {
             {recent.map((appt) => {
               const cfg = statusConfig[appt.status] || statusConfig.pending;
               return (
-                <Link key={appt._id} to={`/patient/appointments/${appt._id}`}
+                <Link key={appt._id} to={`/patient/appointments`}
                   className="flex items-center gap-4 p-4 rounded-xl border border-slate-100 hover:border-primary-200 hover:bg-primary-50/30 transition-all group">
                   {appt.doctor?.profilePhoto ? (
                     <img src={appt.doctor.profilePhoto} alt={appt.doctor.name} className="w-11 h-11 rounded-full object-cover border-2 border-slate-100" />

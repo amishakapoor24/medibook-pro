@@ -298,7 +298,7 @@ exports.forgotPassword = async (req, res, next) => {
   try {
     const { email, role } = req.body;
     const Model = role === "doctor" ? Doctor : User;
-    const user = await Model.findOne({ email });
+    const user = await Model.findOne({ email: typeof email === "string" ? email.trim().toLowerCase() : email });
 
     if (!user) {
       return res.status(404).json({ success: false, message: "No account found with this email" });

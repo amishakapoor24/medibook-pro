@@ -12,7 +12,7 @@ const askAI = async ({ system, prompt }) => {
 
   const isGroqKey = apiKey.startsWith("gsk_");
   const baseUrl = process.env.OPENAI_BASE_URL || (isGroqKey ? "https://api.groq.com/openai/v1/chat/completions" : "https://api.openai.com/v1/chat/completions");
-  const model = process.env.OPENAI_MODEL || (isGroqKey ? "openai/gpt-oss-120b" : "gpt-4o-mini");
+  const model = process.env.OPENAI_MODEL || (isGroqKey ? "llama-3.1-8b-instant" : "gpt-4o-mini");
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), Number(process.env.AI_TIMEOUT_MS) || 30000);
 
@@ -27,7 +27,6 @@ const askAI = async ({ system, prompt }) => {
         model,
         temperature: 0.2,
         max_tokens: 2500,
-        ...(model.startsWith("openai/gpt-oss") && { reasoning_effort: "low" }),
         messages: [{ role: "system", content: system }, { role: "user", content: prompt }],
       }),
       signal: controller.signal,
