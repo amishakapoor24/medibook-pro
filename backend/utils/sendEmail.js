@@ -22,6 +22,11 @@ const sendEmail = async ({ to, subject, html }) => {
       html,
     });
   } catch (error) {
+    console.error("SMTP provider error:", {
+      code: error.code,
+      responseCode: error.responseCode,
+      command: error.command,
+    });
     error.statusCode = 503;
     error.message = "Email service is unavailable. Please try again later.";
     throw error;
