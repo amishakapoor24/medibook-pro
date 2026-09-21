@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
+const { makeOtp } = require("../utils/otp");
 
 const TempRegistrationSchema = new mongoose.Schema(
   {
@@ -44,6 +45,7 @@ const TempRegistrationSchema = new mongoose.Schema(
     otp: {
       code: String,
       expiresAt: Date,
+      attempts: { type: Number, default: 0 },
     },
   },
   { timestamps: true }
@@ -64,12 +66,8 @@ TempRegistrationSchema.pre("save", async function (next) {
 
 // Generate OTP
 TempRegistrationSchema.methods.generateOTP = function () {
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  this.otp = {
-    code: otp,
-    expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
-  };
-  return otp;
+  this.otp = makeOtp();
+  return this.otp.code;
 };
 
 module.exports = mongoose.model("TempRegistration", TempRegistrationSchema);

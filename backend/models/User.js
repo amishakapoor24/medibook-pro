@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const crypto = require("crypto");
+const { makeOtp } = require("../utils/otp");
 
 const UserSchema = new mongoose.Schema(
   {
@@ -71,6 +71,7 @@ const UserSchema = new mongoose.Schema(
     otp: {
       code: String,
       expiresAt: Date,
+      attempts: { type: Number, default: 0 },
     },
     refreshToken: {
       type: String,
@@ -94,6 +95,7 @@ const UserSchema = new mongoose.Schema(
 
 // Hash password before saving
 UserSchema.pre("save", async function (next) {
+  if (this.$locals.passwordAlreadyHashed) return next();
   if (!this.isModified("password") || !this.password) return next();
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
@@ -121,12 +123,8 @@ UserSchema.methods.getRefreshToken = function () {
 
 // Generate OTP
 UserSchema.methods.generateOTP = function () {
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  this.otp = {
-    code: otp,
-    expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
-  };
-  return otp;
+  this.otp = makeOtp();
+  return this.otp.code;
 };
 
 module.exports = mongoose.model("User", UserSchema);

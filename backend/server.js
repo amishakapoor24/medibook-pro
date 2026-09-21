@@ -9,9 +9,16 @@ const connectDB = require("./config/db");
 const { logger, errorHandler } = require("./middleware/errorHandler");
 
 dotenv.config();
+const requiredEnv = ["MONGO_URI", "JWT_SECRET", "JWT_REFRESH_SECRET", "CLIENT_URL"];
+const missingEnv = requiredEnv.filter((name) => !process.env[name]);
+if (missingEnv.length) {
+  console.error(`Missing required environment variables: ${missingEnv.join(", ")}`);
+  process.exit(1);
+}
 connectDB();
 
 const app = express();
+app.set("trust proxy", 1);
 const server = http.createServer(app);
 
 // Socket.io setup
@@ -42,6 +49,7 @@ app.use("/api/doctors", require("./routes/doctorRoutes"));
 app.use("/api/appointments", require("./routes/appointmentRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/chat", require("./routes/chatRoutes"));
+app.use("/api/assistant", require("./routes/assistantRoutes"));
 
 // Health check
 app.get("/", (req, res) => {

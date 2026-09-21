@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { makeOtp } = require("../utils/otp");
 
 const DoctorSchema = new mongoose.Schema(
   {
@@ -115,6 +116,10 @@ const DoctorSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    isVerified: {
+      type: Boolean,
+      default: true,
+    },
     googleId: {
       type: String,
     },
@@ -126,6 +131,7 @@ const DoctorSchema = new mongoose.Schema(
     otp: {
       code: String,
       expiresAt: Date,
+      attempts: { type: Number, default: 0 },
     },
     refreshToken: {
       type: String,
@@ -153,6 +159,7 @@ const DoctorSchema = new mongoose.Schema(
 
 // Hash password before saving
 DoctorSchema.pre("save", async function (next) {
+  if (this.$locals.passwordAlreadyHashed) return next();
   if (!this.isModified("password") || !this.password) return next();
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
@@ -180,12 +187,8 @@ DoctorSchema.methods.getRefreshToken = function () {
 
 // Generate OTP
 DoctorSchema.methods.generateOTP = function () {
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  this.otp = {
-    code: otp,
-    expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-  };
-  return otp;
+  this.otp = makeOtp();
+  return this.otp.code;
 };
 
 module.exports = mongoose.model("Doctor", DoctorSchema);

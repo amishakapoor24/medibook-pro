@@ -1,5 +1,4 @@
 const cloudinary = require("cloudinary").v2;
-const CloudinaryStorage = require("multer-storage-cloudinary");
 const multer = require("multer");
 
 cloudinary.config({
@@ -8,26 +7,49 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Storage for profile photos
-const profileStorage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder: "medibook/profiles",
-    allowed_formats: ["jpg", "jpeg", "png"],
-    transformation: [{ width: 400, height: 400, crop: "fill" }],
+const makeUploader = ({ folder, allowedTypes, maxMB, transformation }) => ({
+  single: (fieldName) => {
+    const upload = multer({
+      storage: multer.memoryStorage(),
+      limits: { fileSize: maxMB * 1024 * 1024, files: 1 },
+      fileFilter: (req, file, cb) => {
+        if (!allowedTypes.includes(file.mimetype)) {
+          const error = new Error("Unsupported file type");
+          error.statusCode = 400;
+          return cb(error);
+        }
+        cb(null, true);
+      },
+    }).single(fieldName);
+
+    const sendToCloudinary = (req, res, next) => {
+      if (!req.file) return next();
+      const stream = cloudinary.uploader.upload_stream(
+        { folder, resource_type: "auto", transformation },
+        (error, result) => {
+          if (error) return next(error);
+          req.file.path = result.secure_url;
+          next();
+        }
+      );
+      stream.end(req.file.buffer);
+    };
+
+    return [upload, sendToCloudinary];
   },
 });
 
-// Storage for doctor documents
-const documentStorage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder: "medibook/documents",
-    allowed_formats: ["jpg", "jpeg", "png", "pdf"],
-  },
+const uploadProfile = makeUploader({
+  folder: "medibook/profiles",
+  allowedTypes: ["image/jpeg", "image/png"],
+  maxMB: 2,
+  transformation: [{ width: 400, height: 400, crop: "fill" }],
 });
 
-const uploadProfile = multer({ storage: profileStorage });
-const uploadDocument = multer({ storage: documentStorage });
+const uploadDocument = makeUploader({
+  folder: "medibook/documents",
+  allowedTypes: ["image/jpeg", "image/png", "application/pdf"],
+  maxMB: 5,
+});
 
 module.exports = { cloudinary, uploadProfile, uploadDocument };

@@ -3,13 +3,14 @@ import { useAuth } from "../../context/AuthContext";
 import toast from "react-hot-toast";
 import {
   LayoutDashboard, Calendar, Users, UserCheck, Settings,
-  LogOut, Stethoscope, Bell, MessageSquare, ClipboardList, Shield,
+  LogOut, Stethoscope, MessageSquare, Bot,
 } from "lucide-react";
 
 const patientLinks = [
   { to: "/patient/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/patient/doctors", icon: Stethoscope, label: "Find Doctors" },
   { to: "/patient/appointments", icon: Calendar, label: "Appointments" },
+  { to: "/patient/assistant", icon: Bot, label: "Health Assistant" },
   { to: "/patient/chat", icon: MessageSquare, label: "Messages" },
   { to: "/patient/profile", icon: Settings, label: "Profile" },
 ];
@@ -24,9 +25,7 @@ const doctorLinks = [
 
 const adminLinks = [
   { to: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/admin/doctors", icon: UserCheck, label: "Doctors" },
-  { to: "/admin/patients", icon: Users, label: "Patients" },
-  { to: "/admin/appointments", icon: ClipboardList, label: "Appointments" },
+  { to: "/admin/verification", icon: UserCheck, label: "Doctor verification" },
 ];
 
 const Sidebar = () => {
@@ -90,15 +89,6 @@ const Sidebar = () => {
           ))}
         </div>
 
-        {user?.role === "admin" && (
-          <div className="mt-4 pt-4 border-t border-slate-100">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-4 mb-2">System</p>
-            <NavLink to="/admin/verification" className={({ isActive }) => `sidebar-link ${isActive ? "active" : ""}`}>
-              <Shield className="w-4 h-4" />
-              Verification Queue
-            </NavLink>
-          </div>
-        )}
       </nav>
 
       {/* Logout */}

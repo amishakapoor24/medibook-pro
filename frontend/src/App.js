@@ -19,6 +19,7 @@ import PatientAppointments from "./pages/patient/Appointments";
 import PatientChat from "./pages/patient/Chat";
 import PatientProfile from "./pages/patient/Profile";
 import PatientMessages from "./pages/patient/Messages";
+import PatientAssistant from "./pages/patient/Assistant";
 
 // Doctor Pages
 import DoctorDashboard from "./pages/doctor/Dashboard";
@@ -60,6 +61,7 @@ function App() {
               <Route path="/patient/doctors" element={<ProtectedRoute roles={["patient"]}><FindDoctors /></ProtectedRoute>} />
               <Route path="/patient/doctors/:id" element={<ProtectedRoute roles={["patient"]}><ViewDoctorProfile /></ProtectedRoute>} />
               <Route path="/patient/appointments" element={<ProtectedRoute roles={["patient"]}><PatientAppointments /></ProtectedRoute>} />
+              <Route path="/patient/assistant" element={<ProtectedRoute roles={["patient"]}><PatientAssistant /></ProtectedRoute>} />
               <Route path="/patient/chat" element={<ProtectedRoute roles={["patient"]}><PatientMessages /></ProtectedRoute>} />
               <Route path="/patient/chat/:appointmentId" element={<ProtectedRoute roles={["patient"]}><PatientChat /></ProtectedRoute>} />
               <Route path="/patient/profile" element={<ProtectedRoute roles={["patient"]}><PatientProfile /></ProtectedRoute>} />

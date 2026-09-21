@@ -94,3 +94,7 @@ export const chatAPI = {
   getMessages: (appointmentId) => API.get(`/chat/${appointmentId}`),
   sendMessage: (appointmentId, data) => API.post(`/chat/${appointmentId}`, data),
 };
+
+export const assistantAPI = {
+  chat: (messages) => API.post("/assistant/chat", { messages }),
+};

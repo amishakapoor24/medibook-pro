@@ -1,18 +1,27 @@
 const Doctor = require("../models/Doctor");
 const { cloudinary } = require("../config/cloudinary");
 
+const PUBLIC_DOCTOR_FIELDS = "name profilePhoto specialization qualifications experience fees bio address availableDays timeSlots rating";
+const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const queryText = (value) => (typeof value === "string" ? value.trim().slice(0, 60) : "");
+
+exports.PUBLIC_DOCTOR_FIELDS = PUBLIC_DOCTOR_FIELDS;
+
 // @desc    Get all approved doctors
 // @route   GET /api/doctors
 // @access  Public
 exports.getAllDoctors = async (req, res, next) => {
   try {
-    const { specialization, city, sort, search } = req.query;
+    const specialization = queryText(req.query.specialization);
+    const city = queryText(req.query.city);
+    const sort = queryText(req.query.sort);
+    const search = queryText(req.query.search);
 
     let query = { verificationStatus: "approved", isActive: true };
 
     if (specialization) query.specialization = specialization;
-    if (city) query["address.city"] = { $regex: city, $options: "i" };
-    if (search) query.name = { $regex: search, $options: "i" };
+    if (city) query["address.city"] = { $regex: escapeRegex(city), $options: "i" };
+    if (search) query.name = { $regex: escapeRegex(search), $options: "i" };
 
     let sortOption = {};
     if (sort === "rating") sortOption = { "rating.average": -1 };
@@ -23,7 +32,7 @@ exports.getAllDoctors = async (req, res, next) => {
 
     const doctors = await Doctor.find(query)
       .sort(sortOption)
-      .select("-otp -refreshToken -documents");
+      .select(PUBLIC_DOCTOR_FIELDS);
 
     res.status(200).json({ success: true, count: doctors.length, data: doctors });
   } catch (error) {
@@ -36,9 +45,9 @@ exports.getAllDoctors = async (req, res, next) => {
 // @access  Public
 exports.getDoctorById = async (req, res, next) => {
   try {
-    const doctor = await Doctor.findById(req.params.id).select("-otp -refreshToken -documents.idProof");
+    const doctor = await Doctor.findOne({ _id: req.params.id, verificationStatus: "approved", isActive: true }).select(PUBLIC_DOCTOR_FIELDS);
 
-    if (!doctor || doctor.verificationStatus !== "approved") {
+    if (!doctor) {
       return res.status(404).json({ success: false, message: "Doctor not found" });
     }
 
@@ -97,6 +106,9 @@ exports.uploadProfilePhoto = async (req, res, next) => {
 exports.uploadDocuments = async (req, res, next) => {
   try {
     const { documentType } = req.body;
+    if (documentType !== "idProof" && documentType !== "medicalLicense") {
+      return res.status(400).json({ success: false, message: "Invalid document type" });
+    }
     if (!req.file) {
       return res.status(400).json({ success: false, message: "Please upload a document" });
     }
