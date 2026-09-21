@@ -92,7 +92,7 @@ const Login = () => {
 
           {/* Role Toggle */}
           <div className="flex bg-slate-100 rounded-xl p-1 mb-6">
-            {["patient", "doctor", "admin"].map((role) => (
+            {["patient", "doctor"].map((role) => (
               <button key={role} onClick={() => setForm({ ...form, role })}
                 className={`flex-1 py-2 rounded-lg text-sm font-medium capitalize transition-all ${form.role === role ? "bg-white text-primary-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
                 {role}
@@ -133,8 +133,20 @@ const Login = () => {
           </div>
 
           <div className="flex justify-center">
-            <GoogleLogin onSuccess={handleGoogle} onError={() => toast.error("Google login failed")} shape="pill" />
+            {form.role === "admin" ? (
+              <p className="text-xs text-slate-400">Administrators sign in with email and password.</p>
+            ) : (
+              <GoogleLogin onSuccess={handleGoogle} onError={() => toast.error("Google login failed")} shape="pill" />
+            )}
           </div>
+
+          <button
+            type="button"
+            onClick={() => setForm({ ...form, role: "admin" })}
+            className="block mx-auto mt-4 text-xs text-slate-400 hover:text-primary-600 transition-colors"
+          >
+            Admin sign in
+          </button>
 
           <p className="text-center text-sm text-slate-500 mt-6">
             Don't have an account?{" "}
