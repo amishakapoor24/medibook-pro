@@ -24,7 +24,6 @@ const Register = () => {
     city: "",
     state: "",
     clinic: "",
-    house: "",
   });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -45,7 +44,6 @@ const Register = () => {
         payload.specialization = form.specialization;
         payload.experience = form.experience;
         payload.fees = form.fees;
-        payload.house = form.house;
         payload.address = {
           city: form.city,
           state: form.state,
@@ -132,17 +130,6 @@ const Register = () => {
                   onChange={(e) => setForm({ ...form, specialization: e.target.value })} required>
                   <option value="">Select specialization</option>
                   {specializations.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-slate-700 block mb-1.5">House</label>
-                <select className="input-field" value={form.house}
-                  onChange={(e) => setForm({ ...form, house: e.target.value })} required>
-                  <option value="">Select house</option>
-                  <option value="Bhairav">Bhairav</option>
-                  <option value="Bhageshree">Bhageshree</option>
-                  <option value="Malhar">Malhar</option>
                 </select>
               </div>
 
