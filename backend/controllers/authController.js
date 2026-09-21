@@ -48,6 +48,12 @@ exports.register = async (req, res, next) => {
     if (typeof name !== "string" || typeof email !== "string" || typeof password !== "string") {
       return res.status(400).json({ success: false, message: "Name, email, and password are required" });
     }
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      return res.status(400).json({ success: false, message: "Please enter a valid email address" });
+    }
+    if (phone !== undefined && (typeof phone !== "string" || !/^\d{10}$/.test(phone))) {
+      return res.status(400).json({ success: false, message: "Please enter a valid 10-digit phone number" });
+    }
     if (password.length < 8) {
       return res.status(400).json({ success: false, message: "Password must be at least 8 characters" });
     }

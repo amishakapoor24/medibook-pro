@@ -4,6 +4,9 @@ const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
   port: process.env.EMAIL_PORT,
   secure: false,
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 15000,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
@@ -11,12 +14,18 @@ const transporter = nodemailer.createTransport({
 });
 
 const sendEmail = async ({ to, subject, html }) => {
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM,
-    to,
-    subject,
-    html,
-  });
+  try {
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM,
+      to,
+      subject,
+      html,
+    });
+  } catch (error) {
+    error.statusCode = 503;
+    error.message = "Email service is unavailable. Please try again later.";
+    throw error;
+  }
 };
 
 // OTP Verification Email
