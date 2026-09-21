@@ -169,6 +169,9 @@ exports.acceptAppointment = async (req, res, next) => {
     if (appointment.doctor._id.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: "Not authorized" });
     }
+    if (appointment.status !== "pending") {
+      return res.status(400).json({ success: false, message: `This appointment is already ${appointment.status}` });
+    }
 
     appointment.status = "confirmed";
     appointment.meetingInfo = meetingInfo || "Please arrive 10 minutes before your appointment.";
@@ -218,6 +221,9 @@ exports.rejectAppointment = async (req, res, next) => {
     if (appointment.doctor._id.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: "Not authorized" });
     }
+    if (appointment.status !== "pending") {
+      return res.status(400).json({ success: false, message: `This appointment is already ${appointment.status}` });
+    }
 
     appointment.status = "rejected";
     appointment.rejectionReason = reason || "Doctor unavailable";
@@ -261,6 +267,9 @@ exports.cancelAppointment = async (req, res, next) => {
     if (appointment.patient.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: "Not authorized" });
     }
+    if (appointment.status !== "pending" && appointment.status !== "confirmed") {
+      return res.status(400).json({ success: false, message: `This appointment is already ${appointment.status}` });
+    }
 
     appointment.status = "cancelled";
     appointment.isChatEnabled = false;
@@ -286,6 +295,9 @@ exports.completeAppointment = async (req, res, next) => {
 
     if (appointment.doctor.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+    if (appointment.status !== "confirmed") {
+      return res.status(400).json({ success: false, message: "Only a confirmed appointment can be completed" });
     }
 
     appointment.status = "completed";

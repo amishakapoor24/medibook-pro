@@ -30,13 +30,9 @@ const parseAIResponse = (text) => {
     try {
       return JSON.parse(cleanText.slice(firstObject, lastObject + 1));
     } catch {
-      const answerMatch = cleanText.match(/"answer"\s*:\s*"((?:\\.|[^"\\])*)"/s);
+      const answerMatch = cleanText.match(/"answer"\s*:\s*"([\s\S]*?)"\s*(?:,\s*"urgency"|\})/);
       if (answerMatch) {
-        try {
-          return { answer: JSON.parse(`"${answerMatch[1]}"`) };
-        } catch {
-          return { answer: answerMatch[1] };
-        }
+        return { answer: answerMatch[1].replace(/\\n/g, "\n").replace(/\\"/g, '"') };
       }
     }
   }
