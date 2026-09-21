@@ -230,14 +230,27 @@ exports.login = async (req, res, next) => {
 // @access  Public
 exports.googleAuth = async (req, res, next) => {
   try {
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      return res.status(503).json({ success: false, message: "Google login is not configured on this server." });
+    }
+
     const { token, role } = req.body;
+    if (!token) {
+      return res.status(400).json({ success: false, message: "Google credential token is required." });
+    }
 
-    const ticket = await googleClient.verifyIdToken({
-      idToken: token,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
+    let payload;
+    try {
+      const ticket = await googleClient.verifyIdToken({
+        idToken: token,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      payload = ticket.getPayload();
+    } catch {
+      return res.status(400).json({ success: false, message: "Invalid or expired Google token. Please try again." });
+    }
 
-    const { name, email, picture, sub: googleId } = ticket.getPayload();
+    const { name, email, picture, sub: googleId } = payload;
     const safeRole = role === "doctor" ? "doctor" : "patient";
     const Model = safeRole === "doctor" ? Doctor : User;
 

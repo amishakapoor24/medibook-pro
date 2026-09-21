@@ -42,8 +42,8 @@ const Login = () => {
       toast.success(`Welcome, ${data.user.name}!`);
       const redirectMap = { patient: "/patient/dashboard", doctor: "/doctor/dashboard", admin: "/admin/dashboard" };
       navigate(redirectMap[data.user.role]);
-    } catch {
-      toast.error("Google login failed");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Google login failed. Please try again.");
     }
   };
 

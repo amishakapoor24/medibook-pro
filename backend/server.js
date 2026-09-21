@@ -46,7 +46,16 @@ io.use((socket, next) => {
 });
 
 // Security middleware
-app.use(helmet());
+// crossOriginOpenerPolicy must be same-origin-allow-popups so that
+// the Google OAuth popup can postMessage back to this window.
+// crossOriginEmbedderPolicy must be disabled because Google's OAuth
+// scripts are cross-origin and COEP would block them.
+app.use(
+  helmet({
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+    crossOriginEmbedderPolicy: false,
+  })
+);
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(express.json());
 app.use(logger);
