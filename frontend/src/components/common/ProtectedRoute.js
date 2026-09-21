@@ -1,7 +1,7 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
-const ProtectedRoute = ({ children, roles }) => {
+const ProtectedRoute = ({ children, roles, allowPendingDoctor = false }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -19,6 +19,9 @@ const ProtectedRoute = ({ children, roles }) => {
   if (roles && !roles.includes(user.role)) {
     const redirectMap = { patient: "/patient/dashboard", doctor: "/doctor/dashboard", admin: "/admin/dashboard" };
     return <Navigate to={redirectMap[user.role] || "/login"} replace />;
+  }
+  if (user.role === "doctor" && user.verificationStatus === "pending" && !allowPendingDoctor) {
+    return <Navigate to="/doctor/verification-pending" replace />;
   }
 
   return children;

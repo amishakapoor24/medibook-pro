@@ -28,6 +28,7 @@ import DoctorProfile from "./pages/doctor/Profile";
 import DoctorMessages from "./pages/doctor/Messages";
 import DoctorPatients from "./pages/doctor/Patients";
 import DoctorChat from "./pages/patient/Chat";
+import DoctorVerificationPending from "./pages/doctor/VerificationPending";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -68,6 +69,7 @@ function App() {
 
               {/* Doctor */}
               <Route path="/doctor/dashboard" element={<ProtectedRoute roles={["doctor"]}><DoctorDashboard /></ProtectedRoute>} />
+              <Route path="/doctor/verification-pending" element={<ProtectedRoute roles={["doctor"]} allowPendingDoctor><DoctorVerificationPending /></ProtectedRoute>} />
               <Route path="/doctor/appointments" element={<ProtectedRoute roles={["doctor"]}><DoctorAppointments /></ProtectedRoute>} />
               <Route path="/doctor/chat" element={<ProtectedRoute roles={["doctor"]}><DoctorMessages /></ProtectedRoute>} />
               <Route path="/doctor/chat/:appointmentId" element={<ProtectedRoute roles={["doctor"]}><DoctorChat /></ProtectedRoute>} />
