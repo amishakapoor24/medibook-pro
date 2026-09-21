@@ -91,5 +91,5 @@ Deploy the frontend to Vercel and the backend to Render. Set `REACT_APP_API_URL`
 - The assistant depends on the configured AI provider and can be unavailable or rate limited.
 - Email, Cloudinary, MongoDB, and Google OAuth require valid production credentials.
 - Document URLs should be moved behind authenticated access or signed URLs for stricter privacy.
-- Live chat and notification authorization can be strengthened with appointment-level checks and message retention policies.
+- Socket chat now requires a valid JWT and an active appointment participant check; message retention policies can be added later.
 - Add automated integration tests for signup, approval, booking, uploads, and provider failures before production launch.

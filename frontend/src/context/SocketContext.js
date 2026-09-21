@@ -11,7 +11,9 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     if (user) {
-      const newSocket = io(process.env.REACT_APP_SOCKET_URL);
+      const newSocket = io(process.env.REACT_APP_SOCKET_URL, {
+        auth: { token: localStorage.getItem("accessToken") },
+      });
       newSocket.emit("join", user.id);
 
       newSocket.on("receive_notification", (notification) => {

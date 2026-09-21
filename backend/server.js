@@ -5,6 +5,8 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const jwt = require("jsonwebtoken");
+const Appointment = require("./models/Appointment");
 const connectDB = require("./config/db");
 const { logger, errorHandler } = require("./middleware/errorHandler");
 
@@ -27,6 +29,20 @@ const io = new Server(server, {
     origin: process.env.CLIENT_URL,
     methods: ["GET", "POST"],
   },
+});
+
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+  if (!token) return next(new Error("Not authorized"));
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    socket.userId = String(decoded.id);
+    socket.userRole = decoded.role;
+    next();
+  } catch {
+    next(new Error("Not authorized"));
+  }
 });
 
 // Security middleware
@@ -76,25 +92,35 @@ io.on("connection", (socket) => {
 
   // User joins with their userId
   socket.on("join", (userId) => {
-    onlineUsers.set(userId, socket.id);
-    socket.join(userId);
-    console.log(`✅ User ${userId} joined`);
+    if (String(userId) !== socket.userId) return;
+    onlineUsers.set(socket.userId, socket.id);
+    socket.join(socket.userId);
+    console.log(`✅ User ${socket.userId} joined`);
   });
 
   // Join appointment chat room
-  socket.on("join_chat", (appointmentId) => {
-    socket.join(`chat_${appointmentId}`);
-    console.log(`💬 Joined chat room: ${appointmentId}`);
+  socket.on("join_chat", async (appointmentId) => {
+    try {
+      const appointment = await Appointment.findById(appointmentId).select("patient doctor isChatEnabled");
+      const isParticipant = appointment && [appointment.patient.toString(), appointment.doctor.toString()].includes(socket.userId);
+      if (!isParticipant || !appointment.isChatEnabled) return;
+      socket.join(`chat_${appointmentId}`);
+      console.log(`💬 User ${socket.userId} joined chat room: ${appointmentId}`);
+    } catch {
+      return;
+    }
   });
 
   // Send message in real-time
   socket.on("send_message", (data) => {
+    if (!data?.appointmentId || !socket.rooms.has(`chat_${data.appointmentId}`)) return;
     io.to(`chat_${data.appointmentId}`).emit("receive_message", data);
   });
 
   // Send real-time notification
   socket.on("send_notification", ({ userId, notification }) => {
-    io.to(userId).emit("receive_notification", notification);
+    if (String(userId) === socket.userId) return;
+    io.to(String(userId)).emit("receive_notification", notification);
   });
 
   socket.on("disconnect", () => {
