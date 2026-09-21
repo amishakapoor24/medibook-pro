@@ -36,6 +36,9 @@ const Assistant = () => {
       content: message.role === "assistant" && message.reply?.type === "emergency"
         ? "(Emergency instructions were shown.)"
         : message.role === "assistant" ? message.reply?.answer || message.content : message.content,
+    })).map((message) => ({
+      ...message,
+      content: message.content.slice(0, 600),
     }));
 
     try {
