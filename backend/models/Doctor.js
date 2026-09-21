@@ -81,11 +81,6 @@ const DoctorSchema = new mongoose.Schema(
       state: String,
       country: { type: String, default: "India" },
     },
-    house: {
-      type: String,
-      enum: ["Bhairav", "Bhageshree", "Malhar"],
-      required: [true, "House selection is required"],
-    },
     availableDays: {
       type: [String],
       enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],

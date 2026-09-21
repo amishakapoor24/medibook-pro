@@ -32,10 +32,6 @@ const TempRegistrationSchema = new mongoose.Schema(
     specialization: String,
     experience: Number,
     fees: Number,
-    house: {
-      type: String,
-      enum: ["Bhairav", "Bhageshree", "Malhar"],
-    },
     address: {
       city: String,
       state: String,

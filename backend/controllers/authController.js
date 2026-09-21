@@ -34,7 +34,6 @@ const sendTokens = async (user, statusCode, res) => {
       ...(user.role === "doctor" && {
         verificationStatus: user.verificationStatus,
         specialization: user.specialization,
-        house: user.house,
       }),
     },
   });
@@ -45,7 +44,7 @@ const sendTokens = async (user, statusCode, res) => {
 // @access  Public
 exports.register = async (req, res, next) => {
   try {
-    const { name, email, password, phone, role, specialization, experience, fees, address, house } = req.body;
+    const { name, email, password, phone, role, specialization, experience, fees, address } = req.body;
     if (typeof name !== "string" || typeof email !== "string" || typeof password !== "string") {
       return res.status(400).json({ success: false, message: "Name, email, and password are required" });
     }
@@ -88,7 +87,6 @@ exports.register = async (req, res, next) => {
       tempData.experience = experience;
       tempData.fees = fees;
       tempData.address = address;
-      tempData.house = house;
     }
 
     const tempRegistration = await TempRegistration.create(tempData);
@@ -153,7 +151,6 @@ exports.verifyOTP = async (req, res, next) => {
         experience: tempReg.experience,
         fees: tempReg.fees,
         address: tempReg.address,
-        house: tempReg.house,
       }),
     });
     user.$locals.passwordAlreadyHashed = true;
