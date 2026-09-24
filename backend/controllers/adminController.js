@@ -107,9 +107,13 @@ exports.approveDoctor = async (req, res, next) => {
 exports.rejectDoctor = async (req, res, next) => {
   try {
     const { reason } = req.body;
+    if (typeof reason !== "string" || !reason.trim()) {
+      return res.status(400).json({ success: false, message: "Please provide a reason for rejecting this doctor" });
+    }
+    const cleanReason = reason.trim().slice(0, 500);
     const doctor = await Doctor.findByIdAndUpdate(
       req.params.id,
-      { verificationStatus: "rejected", verificationNote: reason },
+      { verificationStatus: "rejected", verificationNote: cleanReason },
       { new: true }
     );
 
@@ -120,13 +124,13 @@ exports.rejectDoctor = async (req, res, next) => {
     await Doctor.findByIdAndUpdate(req.params.id, {
       $push: {
         notifications: {
-          message: `Your profile was rejected. Reason: ${reason}`,
+          message: `Your profile was rejected. Reason: ${cleanReason}`,
           type: "verification",
         },
       },
     });
 
-    await sendDoctorRejectedEmail(doctor.email, doctor.name, reason);
+    await sendDoctorRejectedEmail(doctor.email, doctor.name, cleanReason);
 
     res.status(200).json({ success: true, message: "Doctor rejected", data: doctor });
   } catch (error) {

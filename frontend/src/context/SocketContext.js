@@ -12,16 +12,20 @@ export const SocketProvider = ({ children }) => {
   useEffect(() => {
     if (user) {
       const newSocket = io(process.env.REACT_APP_SOCKET_URL, {
-        auth: { token: localStorage.getItem("accessToken") },
+        auth: (callback) => callback({ token: localStorage.getItem("accessToken") }),
       });
-      newSocket.emit("join", user.id);
+      const joinUserRoom = () => newSocket.emit("join", user.id);
+      newSocket.on("connect", joinUserRoom);
 
       newSocket.on("receive_notification", (notification) => {
         setNotifications((prev) => [notification, ...prev]);
       });
 
       setSocket(newSocket);
-      return () => newSocket.disconnect();
+      return () => {
+        newSocket.off("connect", joinUserRoom);
+        newSocket.disconnect();
+      };
     }
   }, [user]);
 

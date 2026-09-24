@@ -6,7 +6,7 @@ MediBook Pro is a healthcare appointment platform for patients, doctors, and adm
 
 - **Patients:** register with email OTP, find approved doctors, view profiles, book/cancel appointments, chat with doctors after confirmation, and ask the Health Assistant.
 - **Doctors:** register with professional details, upload verification documents, set available days and time slots, accept or reject requests, chat with patients, and complete appointments.
-- **Admins:** review and approve or reject doctors, manage users, inspect appointments, and view dashboard analytics.
+- **Admins:** view dashboard analytics and approve or reject doctor profiles.
 
 ## AI Health Assistant
 
@@ -53,7 +53,7 @@ Copy-Item backend/.env.example backend/.env
 Copy-Item frontend/.env.example frontend/.env
 ```
 
-Set the backend values for `MONGO_URI`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `CLIENT_URL`, `EMAIL_*`, and `CLOUDINARY_*`. Set `OPENAI_API_KEY` to your Groq API key (starts with `gsk_`). The default model is `llama-3.1-8b-instant` (Groq free tier, 14 400 req/day). To override, set `OPENAI_MODEL` to any model available on your Groq plan (e.g. `llama-3.3-70b-versatile`). Optional: `OPENAI_BASE_URL` to change the provider endpoint, `AI_TIMEOUT_MS` to change the request timeout.
+Set the backend values for `MONGO_URI`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `CLIENT_URL`, and `CLOUDINARY_*`. Locally, `EMAIL_*` can use SMTP. On Render's free plan, SMTP ports are blocked, so set `BREVO_API_KEY` and `EMAIL_SENDER` to a sender address verified in Brevo; emails then use Brevo's HTTPS API. Set `OPENAI_API_KEY` to your Groq API key (starts with `gsk_`). The default model is `openai/gpt-oss-120b` (Groq). Groq retires model names from time to time; if the assistant says the AI is not set up correctly, set `OPENAI_MODEL` to a current model from the Groq console. Optional: `OPENAI_BASE_URL` to change the provider endpoint, `AI_TIMEOUT_MS` to change the request timeout.
 
 Set frontend `REACT_APP_API_URL` to the backend URL ending in `/api`, `REACT_APP_SOCKET_URL` to the backend origin, and `REACT_APP_GOOGLE_CLIENT_ID` if Google login is enabled.
 
@@ -84,7 +84,17 @@ node scripts/createAdmin.js
 
 ## Deployment
 
-Deploy the frontend to Vercel and the backend to Render. Set `REACT_APP_API_URL` to the deployed backend URL ending in `/api`, and set the backend `CLIENT_URL` to the deployed frontend URL. Add all production secrets in the hosting provider's environment settings.
+Deploy the frontend to Vercel and the backend to Render. Set `REACT_APP_API_URL` to the deployed backend URL ending in `/api`, and set `REACT_APP_SOCKET_URL` to the backend origin. Set the backend `CLIENT_URL` to the deployed frontend URL. On Render's free plan, configure `BREVO_API_KEY` and `EMAIL_SENDER` because SMTP ports are blocked; locally, SMTP `EMAIL_*` remains supported. Add all production secrets in the hosting provider's environment settings.
+
+## Manual Test Path
+
+1. Register a patient and verify the email OTP.
+2. Register a doctor and verify the email OTP.
+3. Create or sign in as an admin and approve the doctor.
+4. Set the doctor's available days and time slots.
+5. Book the doctor as the patient and accept the appointment as the doctor.
+6. Open the appointment chat from both accounts and send messages.
+7. Ask the Health Assistant a normal question and an emergency question such as "I am struggling to breathe".
 
 ## Known Limitations and Next Steps
 

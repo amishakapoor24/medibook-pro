@@ -13,19 +13,61 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+const sendWithBrevo = async ({ to, subject, html }) => {
+  const senderEmail = process.env.EMAIL_SENDER || process.env.EMAIL_USER;
+  if (!process.env.BREVO_API_KEY || !senderEmail) {
+    throw new Error("Brevo email configuration is missing");
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": process.env.BREVO_API_KEY,
+      },
+      body: JSON.stringify({
+        sender: { name: "MediBook Pro", email: senderEmail },
+        to: [{ email: to }],
+        subject,
+        htmlContent: html,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const responseText = await response.text();
+      const error = new Error(`Brevo returned ${response.status}: ${responseText.slice(0, 200)}`);
+      error.code = `BREVO_${response.status}`;
+      throw error;
+    }
+  } catch (error) {
+    if (error.name === "AbortError") {
+      error.code = "BREVO_TIMEOUT";
+      error.message = "Brevo request timed out";
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
 const sendEmail = async ({ to, subject, html }) => {
   try {
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM,
-      to,
-      subject,
-      html,
-    });
+    if (process.env.BREVO_API_KEY) {
+      await sendWithBrevo({ to, subject, html });
+    } else {
+      await transporter.sendMail({ from: process.env.EMAIL_FROM, to, subject, html });
+    }
   } catch (error) {
-    console.error("SMTP provider error:", {
+    console.error("Email provider error:", {
+      provider: process.env.BREVO_API_KEY ? "brevo" : "smtp",
       code: error.code,
       responseCode: error.responseCode,
       command: error.command,
+      ...(process.env.BREVO_API_KEY && { message: error.message }),
     });
     error.statusCode = 503;
     error.message = "Email service is unavailable. Please try again later.";
@@ -58,7 +100,7 @@ exports.sendOTPEmail = async (email, name, otp) => {
 };
 
 // Welcome Email
-exports.sendWelcomeEmail = async (email, name) => {
+const sendWelcomeEmail = async (email, name) => {
   await sendEmail({
     to: email,
     subject: "Welcome to MediBook Pro!",
@@ -78,7 +120,7 @@ exports.sendWelcomeEmail = async (email, name) => {
 };
 
 // Doctor Verification Approved Email
-exports.sendDoctorApprovedEmail = async (email, name) => {
+const sendDoctorApprovedEmail = async (email, name) => {
   await sendEmail({
     to: email,
     subject: "MediBook Pro - Your Profile Has Been Approved! ✅",
@@ -98,7 +140,7 @@ exports.sendDoctorApprovedEmail = async (email, name) => {
 };
 
 // Doctor Verification Rejected Email
-exports.sendDoctorRejectedEmail = async (email, name, reason) => {
+const sendDoctorRejectedEmail = async (email, name, reason) => {
   await sendEmail({
     to: email,
     subject: "MediBook Pro - Profile Verification Update",
@@ -121,7 +163,7 @@ exports.sendDoctorRejectedEmail = async (email, name, reason) => {
 };
 
 // Appointment Confirmation Email
-exports.sendAppointmentConfirmedEmail = async (patientEmail, patientName, doctorName, date, timeSlot, meetingInfo) => {
+const sendAppointmentConfirmedEmail = async (patientEmail, patientName, doctorName, date, timeSlot, meetingInfo) => {
   await sendEmail({
     to: patientEmail,
     subject: "MediBook Pro - Appointment Confirmed! ✅",
@@ -147,7 +189,7 @@ exports.sendAppointmentConfirmedEmail = async (patientEmail, patientName, doctor
 };
 
 // Appointment Rejected Email
-exports.sendAppointmentRejectedEmail = async (patientEmail, patientName, doctorName, reason) => {
+const sendAppointmentRejectedEmail = async (patientEmail, patientName, doctorName, reason) => {
   await sendEmail({
     to: patientEmail,
     subject: "MediBook Pro - Appointment Update",
@@ -192,3 +234,17 @@ exports.sendForgotPasswordEmail = async (email, name, otp) => {
     `,
   });
 };
+
+const ignoreEmailFailure = (sendOptionalEmail) => async (...args) => {
+  try {
+    await sendOptionalEmail(...args);
+  } catch {
+    // Courtesy notifications must not undo a successful database action.
+  }
+};
+
+exports.sendWelcomeEmail = ignoreEmailFailure(sendWelcomeEmail);
+exports.sendDoctorApprovedEmail = ignoreEmailFailure(sendDoctorApprovedEmail);
+exports.sendDoctorRejectedEmail = ignoreEmailFailure(sendDoctorRejectedEmail);
+exports.sendAppointmentConfirmedEmail = ignoreEmailFailure(sendAppointmentConfirmedEmail);
+exports.sendAppointmentRejectedEmail = ignoreEmailFailure(sendAppointmentRejectedEmail);

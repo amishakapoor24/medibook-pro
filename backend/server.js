@@ -126,12 +126,6 @@ io.on("connection", (socket) => {
     io.to(`chat_${data.appointmentId}`).emit("receive_message", data);
   });
 
-  // Send real-time notification
-  socket.on("send_notification", ({ userId, notification }) => {
-    if (String(userId) === socket.userId) return;
-    io.to(String(userId)).emit("receive_notification", notification);
-  });
-
   socket.on("disconnect", () => {
     onlineUsers.forEach((value, key) => {
       if (value === socket.id) onlineUsers.delete(key);

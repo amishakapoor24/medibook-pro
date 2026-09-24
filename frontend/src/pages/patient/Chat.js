@@ -35,11 +35,16 @@ const Chat = () => {
 
   useEffect(() => {
     if (socket) {
-      socket.emit("join_chat", appointmentId);
+      const joinRoom = () => socket.emit("join_chat", appointmentId);
+      if (socket.connected) joinRoom();
+      socket.on("connect", joinRoom);
       socket.on("receive_message", (msg) => {
         setMessages((prev) => [...prev, msg]);
       });
-      return () => socket.off("receive_message");
+      return () => {
+        socket.off("connect", joinRoom);
+        socket.off("receive_message");
+      };
     }
   }, [socket, appointmentId]);
 
