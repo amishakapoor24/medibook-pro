@@ -68,6 +68,9 @@ export const ResetPassword = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (form.newPassword.length < 8) {
+      return toast.error("Password must be at least 8 characters");
+    }
     setLoading(true);
     try {
       await authAPI.resetPassword({ userId, ...form, role });
@@ -94,7 +97,7 @@ export const ResetPassword = () => {
             </div>
             <div>
               <label className="text-sm font-medium text-slate-700 block mb-1.5">New Password</label>
-              <input type="password" className="input-field" placeholder="Min 6 characters"
+              <input type="password" minLength={8} className="input-field" placeholder="Min 8 characters"
                 value={form.newPassword} onChange={(e) => setForm({ ...form, newPassword: e.target.value })} required />
             </div>
             <button type="submit" disabled={loading} className="btn-primary w-full py-3">

@@ -5,6 +5,9 @@ import { AuthProvider } from "./context/AuthContext";
 import { SocketProvider } from "./context/SocketContext";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 
+// Public Pages
+import Home from "./pages/public/Home";
+
 // Auth Pages
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
@@ -49,25 +52,29 @@ function App() {
               }}
             />
             <Routes>
-              {/* Public */}
-              <Route path="/" element={<Navigate to="/login" replace />} />
+              {/* Public Discovery Experience */}
+              <Route path="/" element={<Home />} />
+              <Route path="/doctors" element={<FindDoctors />} />
+              <Route path="/doctors/:id" element={<ViewDoctorProfile />} />
+
+              {/* Public Auth Routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/verify-otp" element={<VerifyOTP />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
 
-              {/* Patient */}
+              {/* Patient (Protected) */}
               <Route path="/patient/dashboard" element={<ProtectedRoute roles={["patient"]}><PatientDashboard /></ProtectedRoute>} />
-              <Route path="/patient/doctors" element={<ProtectedRoute roles={["patient"]}><FindDoctors /></ProtectedRoute>} />
-              <Route path="/patient/doctors/:id" element={<ProtectedRoute roles={["patient"]}><ViewDoctorProfile /></ProtectedRoute>} />
+              <Route path="/patient/doctors" element={<FindDoctors />} />
+              <Route path="/patient/doctors/:id" element={<ViewDoctorProfile />} />
               <Route path="/patient/appointments" element={<ProtectedRoute roles={["patient"]}><PatientAppointments /></ProtectedRoute>} />
               <Route path="/patient/assistant" element={<ProtectedRoute roles={["patient"]}><PatientAssistant /></ProtectedRoute>} />
               <Route path="/patient/chat" element={<ProtectedRoute roles={["patient"]}><PatientMessages /></ProtectedRoute>} />
               <Route path="/patient/chat/:appointmentId" element={<ProtectedRoute roles={["patient"]}><PatientChat /></ProtectedRoute>} />
               <Route path="/patient/profile" element={<ProtectedRoute roles={["patient"]}><PatientProfile /></ProtectedRoute>} />
 
-              {/* Doctor */}
+              {/* Doctor (Protected) */}
               <Route path="/doctor/dashboard" element={<ProtectedRoute roles={["doctor"]}><DoctorDashboard /></ProtectedRoute>} />
               <Route path="/doctor/verification-pending" element={<ProtectedRoute roles={["doctor"]} allowPendingDoctor><DoctorVerificationPending /></ProtectedRoute>} />
               <Route path="/doctor/appointments" element={<ProtectedRoute roles={["doctor"]}><DoctorAppointments /></ProtectedRoute>} />
@@ -76,12 +83,12 @@ function App() {
               <Route path="/doctor/profile" element={<ProtectedRoute roles={["doctor"]}><DoctorProfile /></ProtectedRoute>} />
               <Route path="/doctor/patients" element={<ProtectedRoute roles={["doctor"]}><DoctorPatients /></ProtectedRoute>} />
 
-              {/* Admin */}
+              {/* Admin (Protected) */}
               <Route path="/admin/dashboard" element={<ProtectedRoute roles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
               <Route path="/admin/verification" element={<ProtectedRoute roles={["admin"]}><VerificationQueue /></ProtectedRoute>} />
 
-              {/* Fallback */}
-              <Route path="*" element={<Navigate to="/login" replace />} />
+              {/* Fallback - Send unauthenticated/unmatched guests to Home */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Router>
         </SocketProvider>

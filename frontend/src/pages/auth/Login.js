@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
 import toast from "react-hot-toast";
-import { Eye, EyeOff, Stethoscope } from "lucide-react";
+import { Eye, EyeOff, Stethoscope, ArrowLeft } from "lucide-react";
 import { authAPI } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
   const [form, setForm] = useState({ email: "", password: "", role: "patient" });
   const [showPass, setShowPass] = useState(false);
@@ -21,7 +22,8 @@ const Login = () => {
       login(data.user, data.accessToken, data.refreshToken);
       toast.success(`Welcome back, ${data.user.name}!`);
       const redirectMap = { patient: "/patient/dashboard", doctor: "/doctor/dashboard", admin: "/admin/dashboard" };
-      navigate(redirectMap[data.user.role]);
+      const destination = location.state?.from?.pathname || redirectMap[data.user.role];
+      navigate(destination, { replace: true });
     } catch (err) {
       const msg = err.response?.data?.message || "Login failed";
       if (err.response?.data?.userId) {
@@ -41,7 +43,8 @@ const Login = () => {
       login(data.user, data.accessToken, data.refreshToken);
       toast.success(`Welcome, ${data.user.name}!`);
       const redirectMap = { patient: "/patient/dashboard", doctor: "/doctor/dashboard", admin: "/admin/dashboard" };
-      navigate(redirectMap[data.user.role]);
+      const destination = location.state?.from?.pathname || redirectMap[data.user.role];
+      navigate(destination, { replace: true });
     } catch (err) {
       toast.error(err.response?.data?.message || "Google login failed. Please try again.");
     }
@@ -58,12 +61,12 @@ const Login = () => {
           ))}
         </div>
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-12">
-            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+          <Link to="/" className="inline-flex items-center gap-3 mb-12 group">
+            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center group-hover:bg-white/30 transition-colors">
               <Stethoscope className="w-6 h-6 text-white" />
             </div>
             <span className="text-2xl font-bold text-white">MediBook Pro</span>
-          </div>
+          </Link>
           <h2 className="text-4xl font-bold text-white leading-tight mb-4">Your Health,<br />Our Priority</h2>
           <p className="text-primary-200 text-lg">Book appointments with verified doctors, manage your health journey, and stay connected with your care team.</p>
           <div className="mt-10 grid grid-cols-2 gap-4">
@@ -74,17 +77,25 @@ const Login = () => {
               </div>
             ))}
           </div>
+          <Link to="/" className="inline-flex items-center gap-2 text-white/80 hover:text-white mt-10 text-sm font-semibold transition-colors">
+            <ArrowLeft className="w-4 h-4" /> Explore Doctors & Services Without Sign In
+          </Link>
         </div>
       </div>
 
       {/* Right Panel */}
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-md animate-slide-up">
-          <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center">
-              <Stethoscope className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold text-slate-800">MediBook Pro</span>
+          <div className="flex items-center justify-between mb-8">
+            <Link to="/" className="flex items-center gap-2">
+              <div className="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center">
+                <Stethoscope className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-xl font-bold text-slate-800">MediBook Pro</span>
+            </Link>
+            <Link to="/" className="text-xs font-semibold text-primary-600 hover:text-primary-700 flex items-center gap-1">
+              <ArrowLeft className="w-3.5 h-3.5" /> Back to Home
+            </Link>
           </div>
 
           <h1 className="text-3xl font-bold text-slate-800 mb-2">Welcome back</h1>

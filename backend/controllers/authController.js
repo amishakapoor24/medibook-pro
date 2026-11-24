@@ -39,19 +39,20 @@ const sendTokens = async (user, statusCode, res) => {
   });
 };
 
-// @desc    Register patient - Store in temp collection, send OTP
+// @desc    Register patient / doctor - Store in temp collection, send OTP
 // @route   POST /api/auth/register
 // @access  Public
 exports.register = async (req, res, next) => {
   try {
     const { name, email, password, phone, role, specialization, experience, fees, address } = req.body;
-    if (typeof name !== "string" || typeof email !== "string" || typeof password !== "string") {
+    if (typeof name !== "string" || !name.trim() || typeof email !== "string" || !email.trim() || typeof password !== "string") {
       return res.status(400).json({ success: false, message: "Name, email, and password are required" });
     }
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
       return res.status(400).json({ success: false, message: "Please enter a valid email address" });
     }
-    if (phone !== undefined && (typeof phone !== "string" || !/^\d{10}$/.test(phone))) {
+    const cleanPhone = typeof phone === "string" ? phone.trim() : "";
+    if (cleanPhone && !/^\d{10}$/.test(cleanPhone)) {
       return res.status(400).json({ success: false, message: "Please enter a valid 10-digit phone number" });
     }
     if (password.length < 8) {
@@ -64,42 +65,63 @@ exports.register = async (req, res, next) => {
     const normalizedEmail = email.trim().toLowerCase();
     const normalizedRole = role || "patient";
 
-    // Check if email already exists in temp registrations
-    let tempReg = await TempRegistration.findOne({ email: normalizedEmail });
-    
-    if (tempReg) {
-      // Delete old temp registration if exists
-      await TempRegistration.deleteOne({ email: normalizedEmail });
+    if (normalizedRole === "doctor") {
+      if (!cleanPhone) {
+        return res.status(400).json({ success: false, message: "Phone number is required for doctors" });
+      }
+      if (!specialization) {
+        return res.status(400).json({ success: false, message: "Specialization is required for doctors" });
+      }
+      if (experience === undefined || experience === "" || isNaN(Number(experience))) {
+        return res.status(400).json({ success: false, message: "Valid years of experience is required" });
+      }
+      if (fees === undefined || fees === "" || isNaN(Number(fees))) {
+        return res.status(400).json({ success: false, message: "Valid consultation fee is required" });
+      }
+      if (!address || !address.city || !address.city.trim()) {
+        return res.status(400).json({ success: false, message: "City is required for doctors" });
+      }
     }
 
-    // Check if email already registered permanently
-    const Model = normalizedRole === "doctor" ? Doctor : User;
-    const existing = await Model.findOne({ email: normalizedEmail });
-    if (existing) {
+    // Check if email already exists in temp registrations
+    await TempRegistration.deleteMany({ email: normalizedEmail });
+
+    // Check if email already registered permanently in User or Doctor
+    const [existingUser, existingDoctor] = await Promise.all([
+      User.findOne({ email: normalizedEmail }),
+      Doctor.findOne({ email: normalizedEmail }),
+    ]);
+    if (existingUser || existingDoctor) {
       return res.status(400).json({ success: false, message: "Email already registered" });
     }
 
     // Create temporary registration
     const tempData = {
-      name,
+      name: name.trim(),
       email: normalizedEmail,
       password,
-      phone,
+      phone: cleanPhone || undefined,
       role: normalizedRole,
     };
 
     if (normalizedRole === "doctor") {
       tempData.specialization = specialization;
-      tempData.experience = experience;
-      tempData.fees = fees;
+      tempData.experience = Number(experience);
+      tempData.fees = Number(fees);
       tempData.address = address;
     }
 
     const tempRegistration = await TempRegistration.create(tempData);
     const otp = tempRegistration.generateOTP();
     await tempRegistration.save();
-    
-    await sendOTPEmail(normalizedEmail, name, otp);
+
+    if (process.env.NODE_ENV === "development") {
+      console.log(`\n========================================`);
+      console.log(`🔐 REGISTRATION OTP FOR [${normalizedEmail}]: ${otp}`);
+      console.log(`========================================\n`);
+    }
+
+    await sendOTPEmail(normalizedEmail, name.trim(), otp);
 
     res.status(201).json({
       success: true,
@@ -163,8 +185,13 @@ exports.verifyOTP = async (req, res, next) => {
     await user.save();
     user.$locals.passwordAlreadyHashed = false;
 
-    await sendWelcomeEmail(user.email, user.name);
-    
+    // Send welcome email gracefully (non-fatal if network/smtp issue)
+    try {
+      await sendWelcomeEmail(user.email, user.name);
+    } catch (emailErr) {
+      console.warn("Welcome email could not be sent:", emailErr.message);
+    }
+
     // Delete temporary registration
     await TempRegistration.deleteOne({ _id: userId });
 
@@ -179,8 +206,8 @@ exports.verifyOTP = async (req, res, next) => {
 // @access  Public
 exports.resendOTP = async (req, res, next) => {
   try {
-    const { userId, role } = req.body;
-    
+    const { userId } = req.body;
+
     const tempReg = await TempRegistration.findById(userId);
     if (!tempReg) {
       return res.status(404).json({ success: false, message: "Registration session expired. Please register again." });
@@ -188,6 +215,13 @@ exports.resendOTP = async (req, res, next) => {
 
     const otp = tempReg.generateOTP();
     await tempReg.save();
+
+    if (process.env.NODE_ENV === "development") {
+      console.log(`\n========================================`);
+      console.log(`🔐 RESENT OTP FOR [${tempReg.email}]: ${otp}`);
+      console.log(`========================================\n`);
+    }
+
     await sendOTPEmail(tempReg.email, tempReg.name, otp);
 
     res.status(200).json({ success: true, message: "OTP resent successfully" });
@@ -207,10 +241,25 @@ exports.login = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Please provide email and password" });
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
     const Model = role === "doctor" ? Doctor : User;
-    const user = await Model.findOne({ email: email.trim().toLowerCase() }).select("+password");
+    const user = await Model.findOne({ email: normalizedEmail }).select("+password");
 
-    if (!user || !(await user.matchPassword(password))) {
+    if (!user) {
+      // Check if user exists under the other role for user convenience
+      const AltModel = role === "doctor" ? User : Doctor;
+      const altUser = await AltModel.findOne({ email: normalizedEmail });
+      if (altUser) {
+        const registeredRole = altUser.role === "doctor" ? "Doctor" : "Patient";
+        return res.status(401).json({
+          success: false,
+          message: `This account is registered as a ${registeredRole}. Please switch to the ${registeredRole} tab to sign in.`,
+        });
+      }
+      return res.status(401).json({ success: false, message: "Invalid credentials" });
+    }
+
+    if (!(await user.matchPassword(password))) {
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 
@@ -276,7 +325,11 @@ exports.googleAuth = async (req, res, next) => {
         isVerified: true,
         role: "patient",
       });
-      await sendWelcomeEmail(email, name);
+      try {
+        await sendWelcomeEmail(email, name);
+      } catch (err) {
+        console.warn("Welcome email could not be sent:", err.message);
+      }
     }
 
     await sendTokens(user, 200, res);
@@ -326,6 +379,13 @@ exports.forgotPassword = async (req, res, next) => {
 
     const otp = user.generateOTP();
     await user.save();
+
+    if (process.env.NODE_ENV === "development") {
+      console.log(`\n========================================`);
+      console.log(`🔐 PASSWORD RESET OTP FOR [${email}]: ${otp}`);
+      console.log(`========================================\n`);
+    }
+
     await sendForgotPasswordEmail(email, user.name, otp);
 
     res.status(200).json({

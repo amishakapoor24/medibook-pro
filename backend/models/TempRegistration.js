@@ -21,7 +21,6 @@ const TempRegistrationSchema = new mongoose.Schema(
     },
     phone: {
       type: String,
-      required: true,
     },
     role: {
       type: String,

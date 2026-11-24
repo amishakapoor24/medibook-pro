@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { Eye, EyeOff, Stethoscope } from "lucide-react";
+import { Eye, EyeOff, Stethoscope, ArrowLeft } from "lucide-react";
 import { authAPI } from "../../services/api";
 
 const specializations = [
@@ -30,13 +30,16 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (form.password.length < 8) {
+      return toast.error("Password must be at least 8 characters");
+    }
     setLoading(true);
     try {
       const payload = {
-        name: form.name,
-        email: form.email,
+        name: form.name.trim(),
+        email: form.email.trim(),
         password: form.password,
-        phone: form.phone,
+        phone: form.phone.trim() || undefined,
         role,
       };
 
@@ -45,9 +48,9 @@ const Register = () => {
         payload.experience = form.experience;
         payload.fees = form.fees;
         payload.address = {
-          city: form.city,
-          state: form.state,
-          clinic: form.clinic,
+          city: form.city.trim(),
+          state: form.state.trim(),
+          clinic: form.clinic.trim(),
         };
       }
 
@@ -67,11 +70,16 @@ const Register = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-slate-50 flex items-center justify-center px-6 py-12">
       <div className="w-full max-w-lg animate-slide-up">
-        <div className="flex items-center gap-2 mb-8">
-          <div className="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center">
-            <Stethoscope className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-xl font-bold text-slate-800">MediBook Pro</span>
+        <div className="flex items-center justify-between mb-8">
+          <Link to="/" className="flex items-center gap-2">
+            <div className="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center">
+              <Stethoscope className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xl font-bold text-slate-800">MediBook Pro</span>
+          </Link>
+          <Link to="/" className="text-xs font-semibold text-primary-600 hover:text-primary-700 flex items-center gap-1">
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to Home
+          </Link>
         </div>
 
         <h1 className="text-3xl font-bold text-slate-800 mb-2">Create account</h1>
@@ -103,15 +111,18 @@ const Register = () => {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium text-slate-700 block mb-1.5">Phone</label>
+              <label className="text-sm font-medium text-slate-700 block mb-1.5">
+                {role === "doctor" ? "Phone *" : "Phone (optional)"}
+              </label>
               <input type="tel" className="input-field" placeholder="10-digit number"
-                value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                required={role === "doctor"} />
             </div>
             <div>
               <label className="text-sm font-medium text-slate-700 block mb-1.5">Password</label>
               <div className="relative">
                 <input type={showPass ? "text" : "password"} className="input-field pr-10"
-                  placeholder="Min 6 characters" value={form.password}
+                  placeholder="Min 8 characters" minLength={8} value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })} required />
                 <button type="button" onClick={() => setShowPass(!showPass)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
