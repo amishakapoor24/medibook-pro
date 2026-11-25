@@ -12,7 +12,11 @@ export const AuthProvider = ({ children }) => {
     if (token) {
       authAPI.getMe()
         .then(({ data }) => setUser(data.data))
-        .catch(() => localStorage.clear())
+        .catch(() => {
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("refreshToken");
+          setUser(null);
+        })
         .finally(() => setLoading(false));
     } else {
       setLoading(false);

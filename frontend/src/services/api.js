@@ -22,6 +22,9 @@ API.interceptors.response.use(
       original._retry = true;
       try {
         const refreshToken = localStorage.getItem("refreshToken");
+        if (!refreshToken) {
+          throw new Error("No refresh token");
+        }
         const { data } = await axios.post(
           `${process.env.REACT_APP_API_URL}/auth/refresh`,
           { refreshToken }
@@ -30,8 +33,16 @@ API.interceptors.response.use(
         original.headers.Authorization = `Bearer ${data.accessToken}`;
         return API(original);
       } catch {
-        localStorage.clear();
-        window.location.href = "/login";
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        const path = window.location.pathname;
+        const isProtectedRoute =
+          path.startsWith("/patient") ||
+          path.startsWith("/doctor") ||
+          path.startsWith("/admin");
+        if (isProtectedRoute) {
+          window.location.href = "/login";
+        }
       }
     }
     return Promise.reject(error);
