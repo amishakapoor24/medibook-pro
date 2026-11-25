@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 const API = axios.create({
   baseURL: process.env.REACT_APP_API_URL,
   withCredentials: true,
+  timeout: 15000, // 15s timeout to prevent infinite hanging
 });
 
 // Attach access token to every request

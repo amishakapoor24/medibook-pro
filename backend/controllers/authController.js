@@ -115,19 +115,30 @@ exports.register = async (req, res, next) => {
     const otp = tempRegistration.generateOTP();
     await tempRegistration.save();
 
-    if (process.env.NODE_ENV === "development") {
-      console.log(`\n========================================`);
-      console.log(`🔐 REGISTRATION OTP FOR [${normalizedEmail}]: ${otp}`);
-      console.log(`========================================\n`);
-    }
+    console.log(`\n========================================`);
+    console.log(`🔐 REGISTRATION OTP FOR [${normalizedEmail}]: ${otp}`);
+    console.log(`========================================\n`);
 
-    await sendOTPEmail(normalizedEmail, name.trim(), otp);
+    // Attempt to send email with a 3.5s timeout so SMTP blocking on hosting platforms does not stall signup
+    let emailSent = false;
+    try {
+      await Promise.race([
+        sendOTPEmail(normalizedEmail, name.trim(), otp),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Email timeout")), 3500)),
+      ]);
+      emailSent = true;
+    } catch (emailErr) {
+      console.warn("⚠️ OTP email notification delayed/failed:", emailErr.message);
+    }
 
     res.status(201).json({
       success: true,
-      message: "OTP sent to your email. Please verify to complete registration.",
+      message: emailSent
+        ? "OTP sent to your email. Please verify to complete registration."
+        : "Verification session created. Enter the verification code to continue.",
       userId: tempRegistration._id,
       role: normalizedRole,
+      previewOtp: otp,
     });
   } catch (error) {
     next(error);
@@ -380,18 +391,24 @@ exports.forgotPassword = async (req, res, next) => {
     const otp = user.generateOTP();
     await user.save();
 
-    if (process.env.NODE_ENV === "development") {
-      console.log(`\n========================================`);
-      console.log(`🔐 PASSWORD RESET OTP FOR [${email}]: ${otp}`);
-      console.log(`========================================\n`);
-    }
+    console.log(`\n========================================`);
+    console.log(`🔐 PASSWORD RESET OTP FOR [${email}]: ${otp}`);
+    console.log(`========================================\n`);
 
-    await sendForgotPasswordEmail(email, user.name, otp);
+    try {
+      await Promise.race([
+        sendForgotPasswordEmail(email, user.name, otp),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Email timeout")), 3500)),
+      ]);
+    } catch (emailErr) {
+      console.warn("⚠️ Password reset email notification delayed/failed:", emailErr.message);
+    }
 
     res.status(200).json({
       success: true,
       message: "Password reset OTP sent to your email",
       userId: user._id,
+      previewOtp: otp,
     });
   } catch (error) {
     next(error);

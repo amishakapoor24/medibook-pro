@@ -11,9 +11,14 @@ const VerifyOTP = () => {
   const { login } = useAuth();
   const stateUserId = location.state?.userId;
   const stateRole = location.state?.role;
+  const previewCode = location.state?.previewOtp || localStorage.getItem("tempPreviewOtp");
   const [userId, setUserId] = useState(stateUserId || localStorage.getItem("tempUserId"));
   const [role, setRole] = useState(stateRole || localStorage.getItem("tempRole"));
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otp, setOtp] = useState(
+    previewCode && previewCode.length === 6
+      ? previewCode.split("")
+      : ["", "", "", "", "", ""]
+  );
   const [loading, setLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(60);
   const inputs = useRef([]);
