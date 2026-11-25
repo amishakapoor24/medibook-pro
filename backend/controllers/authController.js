@@ -115,30 +115,33 @@ exports.register = async (req, res, next) => {
     const otp = tempRegistration.generateOTP();
     await tempRegistration.save();
 
-    console.log(`\n========================================`);
-    console.log(`🔐 REGISTRATION OTP FOR [${normalizedEmail}]: ${otp}`);
-    console.log(`========================================\n`);
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`\n========================================`);
+      console.log(`🔐 REGISTRATION OTP FOR [${normalizedEmail}]: ${otp}`);
+      console.log(`========================================\n`);
+    }
 
-    // Attempt to send email with a 3.5s timeout so SMTP blocking on hosting platforms does not stall signup
+    // Send OTP email with a 4s timeout — SMTP ports may be blocked on some hosts
     let emailSent = false;
     try {
       await Promise.race([
         sendOTPEmail(normalizedEmail, name.trim(), otp),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Email timeout")), 3500)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Email timeout")), 4000)),
       ]);
       emailSent = true;
     } catch (emailErr) {
-      console.warn("⚠️ OTP email notification delayed/failed:", emailErr.message);
+      console.warn("⚠️ OTP email failed:", emailErr.message);
     }
 
     res.status(201).json({
       success: true,
       message: emailSent
         ? "OTP sent to your email. Please verify to complete registration."
-        : "Verification session created. Enter the verification code to continue.",
+        : "Verification email could not be delivered. Check your spam or use the code from your server logs.",
       userId: tempRegistration._id,
       role: normalizedRole,
-      previewOtp: otp,
+      // Only expose OTP in non-production for local development convenience
+      ...(process.env.NODE_ENV !== "production" && { previewOtp: otp }),
     });
   } catch (error) {
     next(error);
@@ -391,24 +394,27 @@ exports.forgotPassword = async (req, res, next) => {
     const otp = user.generateOTP();
     await user.save();
 
-    console.log(`\n========================================`);
-    console.log(`🔐 PASSWORD RESET OTP FOR [${email}]: ${otp}`);
-    console.log(`========================================\n`);
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`\n========================================`);
+      console.log(`🔐 PASSWORD RESET OTP FOR [${email}]: ${otp}`);
+      console.log(`========================================\n`);
+    }
 
     try {
       await Promise.race([
         sendForgotPasswordEmail(email, user.name, otp),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Email timeout")), 3500)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Email timeout")), 4000)),
       ]);
     } catch (emailErr) {
-      console.warn("⚠️ Password reset email notification delayed/failed:", emailErr.message);
+      console.warn("⚠️ Password reset email failed:", emailErr.message);
     }
 
     res.status(200).json({
       success: true,
       message: "Password reset OTP sent to your email",
       userId: user._id,
-      previewOtp: otp,
+      // Only expose OTP in non-production for local development convenience
+      ...(process.env.NODE_ENV !== "production" && { previewOtp: otp }),
     });
   } catch (error) {
     next(error);

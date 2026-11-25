@@ -56,18 +56,14 @@ const Register = () => {
 
       const { data } = await authAPI.register(payload);
       toast.success("OTP sent to your email!");
-      // Store in localStorage as backup for state persistence
       localStorage.setItem("tempUserId", data.userId);
       localStorage.setItem("tempRole", role);
-      if (data.previewOtp) {
-        localStorage.setItem("tempPreviewOtp", data.previewOtp);
-      }
       navigate("/verify-otp", { state: { userId: data.userId, role, previewOtp: data.previewOtp } });
     } catch (err) {
       if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
-        toast.error("Server is waking up from standby (Render free tier). Please try again in 10-20 seconds.", { duration: 6000 });
+        toast.error("Server is taking too long to respond. Please try again.");
       } else {
-        toast.error(err.response?.data?.message || "Registration failed. Please check your network and try again.");
+        toast.error(err.response?.data?.message || "Registration failed. Please try again.");
       }
     } finally {
       setLoading(false);

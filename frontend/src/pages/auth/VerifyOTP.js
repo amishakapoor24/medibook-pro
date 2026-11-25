@@ -11,7 +11,8 @@ const VerifyOTP = () => {
   const { login } = useAuth();
   const stateUserId = location.state?.userId;
   const stateRole = location.state?.role;
-  const previewCode = location.state?.previewOtp || localStorage.getItem("tempPreviewOtp");
+  // previewOtp is only sent by the backend in development mode
+  const previewCode = location.state?.previewOtp;
   const [userId, setUserId] = useState(stateUserId || localStorage.getItem("tempUserId"));
   const [role, setRole] = useState(stateRole || localStorage.getItem("tempRole"));
   const [otp, setOtp] = useState(
@@ -55,6 +56,7 @@ const VerifyOTP = () => {
       // Clear temporary data
       localStorage.removeItem("tempUserId");
       localStorage.removeItem("tempRole");
+      localStorage.removeItem("tempPreviewOtp");
       toast.success("Email verified successfully!");
       const redirectMap = { patient: "/patient/dashboard", doctor: "/doctor/dashboard" };
       navigate(redirectMap[data.user.role] || "/login");
