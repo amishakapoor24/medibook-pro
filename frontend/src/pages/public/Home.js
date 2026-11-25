@@ -465,7 +465,7 @@ const Home = () => {
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="card animate-pulse space-y-4">
                   <div className="flex gap-4">
-                    <div className="w-18 h-18 bg-slate-200 rounded-2xl" />
+                    <div className="w-20 h-20 bg-slate-200 rounded-2xl flex-shrink-0" />
                     <div className="flex-1 space-y-2">
                       <div className="h-4 bg-slate-200 rounded w-3/4" />
                       <div className="h-3 bg-slate-200 rounded w-1/2" />
@@ -503,10 +503,10 @@ const Home = () => {
                         <img
                           src={doctor.profilePhoto}
                           alt={doctor.name}
-                          className="w-18 h-18 rounded-2xl object-cover border-2 border-slate-100 group-hover:border-primary-200 transition-colors"
+                          className="w-20 h-20 rounded-2xl object-cover flex-shrink-0 border-2 border-slate-100 group-hover:border-primary-200 transition-colors"
                         />
                       ) : (
-                        <div className="w-18 h-18 rounded-2xl bg-gradient-to-tr from-primary-600 to-primary-400 flex items-center justify-center text-white font-bold text-2xl shadow-sm">
+                        <div className="w-20 h-20 rounded-2xl flex-shrink-0 bg-gradient-to-tr from-primary-600 to-primary-400 flex items-center justify-center text-white font-bold text-2xl shadow-sm">
                           {doctor.name?.charAt(0)}
                         </div>
                       )}
